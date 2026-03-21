@@ -51,6 +51,13 @@ def namegen():
 def hash_email(email):
     return hashlib.md5(email.encode('utf-8')).hexdigest()
 
+def link_boisson_gen():
+    link = "https://basic-fit-qr-code-generator.herokuapp.com/create-qr-code?data=V000"
+    numbers = "0123456789"
+    millieu = "".join(random.sample(numbers, 6))
+    return link + str(millieu)
+
+# --- LOGIQUE SELENIUM ---
 def execute_week(ua, nom, prenom):
     driver = get_driver()
     mail = mailgen()
@@ -130,6 +137,7 @@ def save_visitor_info(user_agent, link, type_qr, nom, prenom, image_tag=None):
     except Exception as e:
         print(f"Erreur sauvegarde: {e}")
 
+# --- ROUTES FLASK ---
 @app.route('/')
 @app.route('/home')
 def home():
@@ -159,6 +167,45 @@ def result_history():
             for line in f: valid_entries.append(json.loads(line))
     return render_template('index.html', isWeek=False, isDay=False, visitor_data=valid_entries)
 
+@app.route('/mark_used/<int:qr_id>', methods=['POST'])
+def mark_used(qr_id):
+    try:
+        with open("visitor_log.json", "r") as f:
+            entries = [json.loads(line) for line in f]
+        used_entry = None
+        for i, entry in enumerate(entries):
+            if entry["id"] == qr_id:
+                used_entry = entry
+                del entries[i]
+                break
+        if used_entry:
+            used_entry["essais_restants"] = 2
+            try:
+                with open("used_qr_codes.json", "r") as f:
+                    used_entries = [json.loads(line) for line in f]
+            except FileNotFoundError:
+                used_entries = []
+            used_entries.append(used_entry)
+            with open("used_qr_codes.json", "w") as f:
+                for entry in used_entries:
+                    json.dump(entry, f)
+                    f.write("\n")
+            with open("visitor_log.json", "w") as f:
+                for entry in entries:
+                    json.dump(entry, f)
+                    f.write("\n")
+            return redirect(url_for('boissons'))
+        return "QR code non trouvé."
+    except Exception as e:
+        return f"Erreur: {e}"
+
+@app.route('/get_boisson_image', methods=['POST', 'GET'])
+def boisson_affiche():
+    if request.method == 'POST':
+        link = link_boisson_gen()
+        return render_template('boissonNew.html', link=link, isGen=True)
+    return render_template('boissonNew.html', isGen=False)
+
 @app.route('/boissons')
 def boissons():
     used_entries = []
@@ -166,6 +213,29 @@ def boissons():
         with open("used_qr_codes.json", "r") as f:
             for line in f: used_entries.append(json.loads(line))
     return render_template('boissons.html', used_entries=used_entries)
+
+@app.route('/use_drink/<int:qr_id>', methods=['POST'])
+def use_drink(qr_id):
+    try:
+        with open("used_qr_codes.json", "r") as f:
+            used_entries = [json.loads(line) for line in f]
+        for i, entry in enumerate(used_entries):
+            if entry["id"] == qr_id:
+                entry["essais_restants"] -= 1
+                if entry["essais_restants"] == 0:
+                    del used_entries[i]
+                break
+        with open("used_qr_codes.json", "w") as f:
+            for entry in used_entries:
+                json.dump(entry, f)
+                f.write("\n")
+        return redirect(url_for('boissons'))
+    except Exception as e:
+        return f"Erreur: {e}"
+
+@app.route('/app')
+def appGen():
+    return render_template("qrAppGen.html")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
