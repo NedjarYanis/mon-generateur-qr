@@ -1,12 +1,12 @@
 # Générateur de QR Code Pass
 
-<div align="center">
-  [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
-  [![Flask](https://img.shields.io/badge/Flask-3.0-black?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
-  [![Selenium](https://img.shields.io/badge/Selenium-Headless-green?logo=selenium&logoColor=white)](https://www.selenium.dev/)
-  [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
-  [![Bootstrap](https://img.shields.io/badge/Bootstrap-5-purple?logo=bootstrap&logoColor=white)](https://getbootstrap.com/)
-</div>
+<p align="center">
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white" alt="Python" /></a>
+  <a href="https://flask.palletsprojects.com/"><img src="https://img.shields.io/badge/Flask-3.0-black?logo=flask&logoColor=white" alt="Flask" /></a>
+  <a href="https://www.selenium.dev/"><img src="https://img.shields.io/badge/Selenium-Headless-green?logo=selenium&logoColor=white" alt="Selenium" /></a>
+  <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white" alt="Docker" /></a>
+  <a href="https://getbootstrap.com/"><img src="https://img.shields.io/badge/Bootstrap-5-purple?logo=bootstrap&logoColor=white" alt="Bootstrap" /></a>
+</p>
 
 <br/>
 
