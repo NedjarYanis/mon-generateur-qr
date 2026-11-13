@@ -1,4 +1,4 @@
-# G?n?rateur de QR Code Pass
+# Générateur de QR Code Pass
 
 <div align="center">
   [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
@@ -10,16 +10,16 @@
 
 <br/>
 
-Application web compl?te d?velopp?e avec **Python Flask** et automatis?e via **Selenium WebDriver**, permettant la g?n?ration, la gestion et la synchronisation de passes d'acc?s avec QR code dynamique. L'application est enti?rement conteneuris?e avec **Docker** pour un d?ploiement fiable en environnement cloud ou sur serveur d?di?.
+Application web complète développée avec **Python Flask** et automatisée via **Selenium WebDriver**, permettant la génération, la gestion et la synchronisation de passes d'accès avec QR code dynamique. L'application est entièrement conteneurisée avec **Docker** pour un déploiement fiable en environnement cloud ou sur serveur dédié.
 
 ---
 
-## Fonctionnalit?s
+## Fonctionnalités
 
-- **Automatisation Headless** : Int?gration de Chrome Headless via Selenium pour la r?cup?ration dynamique de jetons et codes d'acc?s.
+- **Automatisation Headless** : Intégration de Chrome Headless via Selenium pour la récupération dynamique de jetons et codes d'accès.
 - **Interface Web Ergonomique** : Rendu responsive sous Bootstrap 5 avec barre de progression interactive et gestion des vues mobiles.
-- **Support PWA / Mobile** : M?tadonn?es et ic?nes tactiles Apple (`apple-touch-icon`) configur?es pour un ajout direct sur ?cran d'accueil smartphone.
-- **Conteneurisation Docker** : Environnement isol? int?grant Google Chrome, ChromeDriver et toutes les d?pendances Python pour une mise en production instantan?e.
+- **Support PWA / Mobile** : Métadonnées et icônes tactiles Apple (`apple-touch-icon`) configurées pour un ajout direct sur écran d'accueil smartphone.
+- **Conteneurisation Docker** : Environnement isolé intégrant Google Chrome, ChromeDriver et toutes les dépendances Python pour une mise en production instantanée.
 
 ---
 
@@ -27,18 +27,18 @@ Application web compl?te d?velopp?e avec **Python Flask** et automatis?e via **S
 
 ```text
 .
-??? app.py                   # Serveur Flask, logique de routage et pilote Selenium
-??? requirements.txt         # D?pendances Python (Flask, selenium, requests, etc.)
-??? Dockerfile               # Image Docker multi-plateforme avec Chrome headless
-??? static/                  # Feuilles de style CSS, favicon et ic?nes d'application
-??? templates/               # Gabarits HTML Jinja2 (index, qrAppGen, boissons)
+├── app.py                   # Serveur Flask, logique de routage et pilote Selenium
+├── requirements.txt         # Dépendances Python (Flask, selenium, requests, etc.)
+├── Dockerfile               # Image Docker multi-plateforme avec Chrome headless
+├── static/                  # Feuilles de style CSS, favicon et icônes d'application
+└── templates/               # Gabarits HTML Jinja2 (index, qrAppGen, boissons)
 ```
 
 ---
 
 ## Installation & Lancement
 
-### Option 1 : Avec Docker (Recommand?)
+### Option 1 : Avec Docker (Recommandé)
 
 ```bash
 # 1. Construire l'image Docker
@@ -52,15 +52,15 @@ L'application est disponible sur : **[http://localhost:5000](http://localhost:50
 ### Option 2 : En local avec Python
 
 ```bash
-# 1. Cloner le d?p?t
+# 1. Cloner le dépôt
 git clone https://github.com/NedjarYanis/mon-generateur-qr.git
 cd mon-generateur-qr
 
-# 2. Cr?er l'environnement virtuel
+# 2. Créer l'environnement virtuel
 python -m venv venv
-source venv/bin/activate  # Sous Windows : .env\Scripts\Activate.ps1
+source venv/bin/activate  # Sous Windows : .\venv\Scripts\Activate.ps1
 
-# 3. Installer les d?pendances
+# 3. Installer les dépendances
 pip install -r requirements.txt
 
 # 4. Lancer le serveur Flask
@@ -70,5 +70,5 @@ python app.py
 ---
 
 <div align="center">
-  <sub>D?velopp? par Yanis Nedjar</sub>
+  <sub>Développé par Yanis Nedjar</sub>
 </div>
