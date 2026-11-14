@@ -1,242 +1,252 @@
 import os
 import random
-import re
-import time
-import json
-import hashlib
-import requests
-from datetime import datetime, timedelta
-from flask import Flask, render_template, url_for, request, redirect
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
+import io
+from flask import (
+    Flask,
+    render_template,
+    url_for,
+    request,
+    redirect,
+    flash,
+    send_file,
+    jsonify
+)
+from database import (
+    init_db,
+    save_pass,
+    get_all_passes,
+    get_pass_by_id,
+    mark_as_used,
+    use_drink_attempt,
+    delete_pass_by_id,
+    get_stats
+)
+from qr_service import (
+    generate_qr_png_bytes,
+    generate_qr_data_url,
+    format_boisson_code,
+    format_app_card_code
+)
+from mail_service import generate_temp_email, hash_email
+from automation import execute_week_pass, execute_day_pass
 
 app = Flask(__name__)
-isWeek = True
-isDay = True
+app.secret_key = os.environ.get("SECRET_KEY", "basicfit-qr-secret-key-2026")
 
-# --- CONFIGURATION SELENIUM POUR RENDER ---
-def get_driver():
-    chrome_options = webdriver.ChromeOptions()
-    chrome_options.add_argument("--headless=new")
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument('--disable-gpu')
-    chrome_options.binary_location = "/usr/bin/google-chrome"
-    user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    chrome_options.add_argument(f'user-agent={user_agent}')
-    return webdriver.Chrome(options=chrome_options)
+# Initialize SQLite database and run any legacy migrations
+init_db()
 
-# --- FONCTIONS UTILES ---
-def get_domain():
-    url2 = "https://privatix-temp-mail-v1.p.rapidapi.com/request/domains/"
-    headers = {
-        'x-rapidapi-key': os.getenv("RAPIDAPI_KEY"),
-        'x-rapidapi-host': "privatix-temp-mail-v1.p.rapidapi.com"
-    }
-    response2 = requests.get(url2, headers=headers)
-    return response2.json()
+# --- HELPER FUNCTIONS FOR BACKWARD COMPATIBILITY ---
+def namegen() -> str:
+    letters = "abcdefghijklmnopqrstuvwxyz"
+    return "".join(random.choices(letters, k=8)).capitalize()
 
-def mailgen():
-    letter = "abcdefghijklmnopqrstuvwxyz"
-    millieu = "".join(random.sample(letter, 13))
-    domain_list = get_domain()
-    domain = domain_list[random.randint(0, len(domain_list) - 1)]
-    return str(millieu) + domain
+def mailgen() -> str:
+    return generate_temp_email()
 
-def namegen():
-    letter = "abcdefghijklmnopqrstuvwxyz"
-    return "".join(random.sample(letter, 13))
-
-def hash_email(email):
-    return hashlib.md5(email.encode('utf-8')).hexdigest()
-
-def link_boisson_gen():
-    link = "https://basic-fit-qr-code-generator.herokuapp.com/create-qr-code?data=V000"
-    numbers = "0123456789"
-    millieu = "".join(random.sample(numbers, 6))
-    return link + str(millieu)
-
-# --- LOGIQUE SELENIUM ---
-def execute_week(ua, nom, prenom):
-    driver = get_driver()
-    mail = mailgen()
-    hashed_email = hash_email(mail)
-    try:
-        driver.get('https://amigos.basic-fit.com/register?sig=eb13261d3788ee141c96dd065e78c7dd4d61b6adf42497fb0f648cbbc1f4faf9&id=001R6000002Hbq1IAC&campaign=701R6000002HbhyIAC&utm_id=b3f2de58-8206-40ac-b3de-a37f3a0f8e11&sfmc_id=220296788&sfmc_activityid=ecfebade-1f92-4e07-a413-ed832b598534')
-        time.sleep(5)
-        driver.find_element(By.XPATH, '//*[@id="genderForm"]/div[2]/label[1]').click()
-        driver.find_element(By.XPATH, '//*[@id="birthdate"]').send_keys("01-01-2000")
-        driver.find_element(By.XPATH, '//*[@id="firstname"]').send_keys(nom)
-        driver.find_element(By.XPATH, '//*[@id="lastname"]').send_keys(prenom)
-        driver.find_element(By.XPATH, '//*[@id="email"]').send_keys(mail)
-        driver.find_element(By.XPATH, '//*[@id="j_id0:j_id2:opt2"]/div/label').click()
-        driver.find_element(By.XPATH, '//*[@id="signup"]/div[3]/button').click()
-        time.sleep(10)
-    finally:
-        driver.quit()
-
-    url = f"https://privatix-temp-mail-v1.p.rapidapi.com/request/mail/id/{hashed_email}/"
-    headers = {
-        'x-rapidapi-key': os.getenv("RAPIDAPI_KEY"),
-        'x-rapidapi-host': "privatix-temp-mail-v1.p.rapidapi.com"
-    }
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200 and len(response.json()) > 0:
-        html_content = response.json()[0].get('mail_html', '')
-        pattern = r'src="(https://basic-fit-qr-code-generator\.herokuapp\.com/create-qr-code\?data=[^"]+)"'
-        match = re.search(pattern, html_content)
-        if match:
-            src_value = match.group(1)
-            save_visitor_info(ua, src_value, "week", nom, prenom, src_value)
-            return src_value
-    return None
-
-def execute_day(ua, nom, prenom):
-    mail = mailgen()
-    url = "https://member.basic-fit.com/api/signUpForm/signUp"
-    payload = {
-        "firstName": nom, "lastName": prenom, "email": mail,
-        "locale": "fr-FR", "dateOfBirth": "2005-10-10T00:00:00.000Z",
-        "promotions": True, "tos": True, "campaignId": "2Hl7qICv6IYQIWyHqWQou0"
-    }
-    requests.post(url, json=payload)
-    time.sleep(10)
-    hashed_email = hash_email(mail)
-    url_mail = f"https://privatix-temp-mail-v1.p.rapidapi.com/request/mail/id/{hashed_email}/"
-    headers_api = {
-        'x-rapidapi-key': os.getenv("RAPIDAPI_KEY"),
-        'x-rapidapi-host': "privatix-temp-mail-v1.p.rapidapi.com"
-    }
-    response = requests.get(url_mail, headers=headers_api)
-    if response.status_code == 200 and len(response.json()) > 0:
-        html_content = response.json()[0].get('mail_html', '')
-        pattern = r'src="(https://basic-fit-qr-code-generator\.herokuapp\.com/create-qr-code\?data=[^"]+)"'
-        match = re.search(pattern, html_content)
-        if match:
-            src_value = match.group(1)
-            save_visitor_info(ua, src_value, "day", nom, prenom, src_value)
-            return src_value
-    return None
+def link_boisson_gen() -> str:
+    code = format_boisson_code()
+    return f"https://basic-fit-qr-code-generator.herokuapp.com/create-qr-code?data={code}"
 
 def save_visitor_info(user_agent, link, type_qr, nom, prenom, image_tag=None):
-    try:
-        next_id = 1
-        if os.path.exists("visitor_log.json"):
-            with open("visitor_log.json", "r") as f:
-                lines = f.readlines()
-                if lines: next_id = json.loads(lines[-1])["id"] + 1
-        data = {
-            "id": next_id, "timestamp": datetime.now().isoformat(),
-            "user_agent": user_agent, "link": link, "image_tag": image_tag,
-            "Nom": nom, "Prenom": prenom, "duree": type_qr
-        }
-        with open("visitor_log.json", "a") as f:
-            json.dump(data, f)
-            f.write("\n")
-    except Exception as e:
-        print(f"Erreur sauvegarde: {e}")
+    save_pass(
+        pass_type=type_qr,
+        nom=nom,
+        prenom=prenom,
+        link=link,
+        image_tag=image_tag or link,
+        user_agent=user_agent
+    )
 
-# --- ROUTES FLASK ---
+# --- ROUTES ---
+
 @app.route('/')
 @app.route('/home')
 def home():
-    return render_template("index.html", isDay=isDay, isWeek=isWeek)
+    stats = get_stats()
+    recent_passes = get_all_passes()[:5]
+    return render_template(
+        "index.html",
+        isDay=True,
+        isWeek=True,
+        stats=stats,
+        recent_passes=recent_passes
+    )
 
 @app.route('/result_week', methods=['POST'])
 def result_week():
-    user_agent = request.headers.get('User-Agent')
-    nom = request.form.get('nom') or namegen()
-    prenom = request.form.get('prenom') or namegen()
-    link = execute_week(user_agent, nom, prenom)
-    return render_template('index.html', link=link, isDay=False, isWeek=True)
+    user_agent = request.headers.get('User-Agent', '')
+    nom = request.form.get('nom', '').strip() or namegen()
+    prenom = request.form.get('prenom', '').strip() or namegen()
+    
+    img_src, link, msg = execute_week_pass(user_agent, nom, prenom)
+    flash(msg, "success")
+    return render_template(
+        'index.html',
+        link=img_src,
+        qr_code_data=link,
+        nom=nom,
+        prenom=prenom,
+        pass_type="Semaine",
+        isDay=False,
+        isWeek=True
+    )
 
 @app.route('/result_day', methods=['POST'])
 def result_day():
-    user_agent = request.headers.get('User-Agent')
-    nom = request.form.get('nom') or namegen()
-    prenom = request.form.get('prenom') or namegen()
-    link = execute_day(user_agent, nom, prenom)
-    return render_template('index.html', link=link, isWeek=False, isDay=True)
+    user_agent = request.headers.get('User-Agent', '')
+    nom = request.form.get('nom', '').strip() or namegen()
+    prenom = request.form.get('prenom', '').strip() or namegen()
+    
+    img_src, link, msg = execute_day_pass(user_agent, nom, prenom)
+    flash(msg, "success")
+    return render_template(
+        'index.html',
+        link=img_src,
+        qr_code_data=link,
+        nom=nom,
+        prenom=prenom,
+        pass_type="Jour",
+        isWeek=False,
+        isDay=True
+    )
 
 @app.route('/history')
 def result_history():
-    valid_entries = []
-    if os.path.exists("visitor_log.json"):
-        with open("visitor_log.json", "r") as f:
-            for line in f: valid_entries.append(json.loads(line))
-    return render_template('index.html', isWeek=False, isDay=False, visitor_data=valid_entries)
+    pass_filter = request.args.get('type')
+    valid_entries = get_all_passes(pass_type=pass_filter)
+    stats = get_stats()
+    return render_template(
+        'index.html',
+        isWeek=False,
+        isDay=False,
+        visitor_data=valid_entries,
+        stats=stats,
+        current_filter=pass_filter
+    )
 
 @app.route('/mark_used/<int:qr_id>', methods=['POST'])
 def mark_used(qr_id):
-    try:
-        with open("visitor_log.json", "r") as f:
-            entries = [json.loads(line) for line in f]
-        used_entry = None
-        for i, entry in enumerate(entries):
-            if entry["id"] == qr_id:
-                used_entry = entry
-                del entries[i]
-                break
-        if used_entry:
-            used_entry["essais_restants"] = 2
-            try:
-                with open("used_qr_codes.json", "r") as f:
-                    used_entries = [json.loads(line) for line in f]
-            except FileNotFoundError:
-                used_entries = []
-            used_entries.append(used_entry)
-            with open("used_qr_codes.json", "w") as f:
-                for entry in used_entries:
-                    json.dump(entry, f)
-                    f.write("\n")
-            with open("visitor_log.json", "w") as f:
-                for entry in entries:
-                    json.dump(entry, f)
-                    f.write("\n")
-            return redirect(url_for('boissons'))
-        return "QR code non trouvé."
-    except Exception as e:
-        return f"Erreur: {e}"
+    success = mark_as_used(qr_id)
+    if success:
+        flash("Pass marqué comme utilisé ! 2 essais boissons ont été crédités.", "success")
+        return redirect(url_for('boissons'))
+    flash(f"QR code #{qr_id} introuvable.", "warning")
+    return redirect(url_for('result_history'))
 
 @app.route('/get_boisson_image', methods=['POST', 'GET'])
 def boisson_affiche():
     if request.method == 'POST':
-        link = link_boisson_gen()
-        return render_template('boissonNew.html', link=link, isGen=True)
+        user_agent = request.headers.get('User-Agent', '')
+        nom = request.form.get('nom', '').strip() or "Client"
+        prenom = request.form.get('prenom', '').strip() or "Boisson"
+        code = format_boisson_code()
+        
+        # Generate both high-res data URL and standard link
+        data_url = generate_qr_data_url(code)
+        online_link = f"https://basic-fit-qr-code-generator.herokuapp.com/create-qr-code?data={code}"
+        
+        save_pass(
+            pass_type="boisson",
+            nom=nom,
+            prenom=prenom,
+            link=online_link,
+            image_tag=data_url,
+            user_agent=user_agent,
+            qr_data=code,
+            status="used",
+            essais_restants=2
+        )
+        flash(f"Nouveau QR Boisson généré : {code} (2 essais crédités)", "success")
+        return render_template('boissonNew.html', link=data_url, raw_code=code, isGen=True)
+        
     return render_template('boissonNew.html', isGen=False)
 
 @app.route('/boissons')
 def boissons():
-    used_entries = []
-    if os.path.exists("used_qr_codes.json"):
-        with open("used_qr_codes.json", "r") as f:
-            for line in f: used_entries.append(json.loads(line))
-    return render_template('boissons.html', used_entries=used_entries)
+    used_entries = get_all_passes(status='used')
+    # Include all boisson passes
+    all_drinks = [e for e in get_all_passes() if e.get("pass_type") == "boisson" or e.get("essais_restants", 0) > 0]
+    return render_template('boissons.html', used_entries=all_drinks)
 
 @app.route('/use_drink/<int:qr_id>', methods=['POST'])
 def use_drink(qr_id):
-    try:
-        with open("used_qr_codes.json", "r") as f:
-            used_entries = [json.loads(line) for line in f]
-        for i, entry in enumerate(used_entries):
-            if entry["id"] == qr_id:
-                entry["essais_restants"] -= 1
-                if entry["essais_restants"] == 0:
-                    del used_entries[i]
-                break
-        with open("used_qr_codes.json", "w") as f:
-            for entry in used_entries:
-                json.dump(entry, f)
-                f.write("\n")
-        return redirect(url_for('boissons'))
-    except Exception as e:
-        return f"Erreur: {e}"
+    success = use_drink_attempt(qr_id)
+    if success:
+        flash("Un essai boisson a été consommé avec succès !", "success")
+    else:
+        flash(f"QR boisson #{qr_id} introuvable.", "danger")
+    return redirect(url_for('boissons'))
+
+@app.route('/delete_pass/<int:qr_id>', methods=['POST'])
+def delete_pass(qr_id):
+    success = delete_pass_by_id(qr_id)
+    if success:
+        flash(f"Pass #{qr_id} supprimé avec succès.", "info")
+    return redirect(request.referrer or url_for('result_history'))
 
 @app.route('/app')
 def appGen():
     return render_template("qrAppGen.html")
 
+@app.route('/generate_app_qr', methods=['POST'])
+def generate_app_qr():
+    card_number = request.form.get("card_number", "").strip() or "12345678"
+    user_agent = request.headers.get('User-Agent', '')
+    
+    code = format_app_card_code(card_number)
+    data_url = generate_qr_data_url(code)
+    online_link = f"https://basic-fit-qr-code-generator.herokuapp.com/create-qr-code?data={code}"
+    
+    save_pass(
+        pass_type="app",
+        nom="Carte App",
+        prenom=f"N° {card_number}",
+        card_number=card_number,
+        link=online_link,
+        image_tag=data_url,
+        user_agent=user_agent,
+        qr_data=code,
+        status="active"
+    )
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+        return jsonify({
+            "status": "success",
+            "image": data_url,
+            "code": code,
+            "card_number": card_number
+        })
+        
+    flash(f"QR App généré pour la carte {card_number}", "success")
+    return render_template("qrAppGen.html", link=data_url, card_number=card_number, raw_code=code)
+
+# --- NATIVE QR IMAGE API ---
+@app.route('/api/qr')
+def serve_qr_image():
+    """Live high-speed QR generator endpoint."""
+    data = request.args.get("data", "https://basic-fit.com")
+    png_bytes = generate_qr_png_bytes(data)
+    return send_file(
+        io.BytesIO(png_bytes),
+        mimetype="image/png",
+        as_attachment=False,
+        download_name="qr_code.png"
+    )
+
+@app.route('/api/health')
+def health_check():
+    return jsonify({"status": "healthy", "service": "mon-generateur-qr", "version": "2.0.0"})
+
+# --- ERROR HANDLERS ---
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template("index.html", error_message="Page introuvable (404).", isDay=True, isWeek=True), 404
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    return render_template("index.html", error_message="Une erreur interne est survenue. Le système a sécurisé vos données.", isDay=True, isWeek=True), 500
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port, debug=False)

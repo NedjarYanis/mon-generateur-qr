@@ -3,83 +3,145 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Boissons</title>
+    <title>Suivi des QR Boissons - Basic-Fit</title>
     <link rel="icon" href="{{ url_for('static', filename='images.ico') }}" type="image/x-icon">
-    <link rel="stylesheet" type="text/css" href="../static/boissons.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='boissons.css') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
     <link rel="apple-touch-icon" sizes="120x120" href="{{ url_for('static', filename='apple-touch-icon-120x120.png') }}">
     <link rel="apple-touch-icon" sizes="152x152" href="{{ url_for('static', filename='apple-touch-icon-152x152.png') }}">
     <link rel="apple-touch-icon" sizes="167x167" href="{{ url_for('static', filename='apple-touch-icon-167x167.png') }}">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   </head>
   <body>
     <header class="site-header">
       <nav class="nav-bar">
         <a class="brand" href="/">
           <span>Basic-Fit</span>
-          <small>Boissons et QR</small>
+          <small>Boissons et QR v2.0</small>
         </a>
         <div class="nav-links">
-          <a href="/">Accueil</a>
-          <a href="/history">Historique</a>
-          <a href="/get_boisson_image">Boissons</a>
-          <a href="/app">App</a>
+          <a href="/"><i class="bi bi-house-door"></i> Accueil</a>
+          <a href="/history"><i class="bi bi-clock-history"></i> Historique</a>
+          <a href="/boissons"><i class="bi bi-cup-straw"></i> Boissons Suivi</a>
+          <a href="/get_boisson_image"><i class="bi bi-plus-circle"></i> Nouveau QR Boisson</a>
+          <a href="/app"><i class="bi bi-phone"></i> Carte App</a>
         </div>
       </nav>
     </header>
 
     <main class="page">
-      <section class="hero">
-        <h1>QR codes boissons</h1>
-        <p>Suivez les QR codes utilises et gardez un oeil sur les essais restants.</p>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="container my-3">
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show shadow-sm" role="alert">
+                <strong>{{ message }}</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <section class="hero text-center">
+        <h1>Suivi des QR codes boissons</h1>
+        <p>Gérez vos passes boissons, suivez le compteur d'essais restants et consommez vos recharges à la borne.</p>
+        <div class="mt-3">
+          <a href="/get_boisson_image" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Générer une nouvelle boisson
+          </a>
+        </div>
       </section>
 
-      <section class="card">
+      <section class="card p-4">
         <div class="table-wrap">
           <table class="history-table">
-            <tr>
-              <th>ID</th>
-              <th>Timestamp</th>
-              <th>User Agent</th>
-              <th>Nom</th>
-              <th>Prenom</th>
-              <th>Lien</th>
-              <th>QR</th>
-              <th>Essais</th>
-              <th>Action</th>
-            </tr>
-            {% for data in used_entries %}
-            <tr>
-              <td>{{ data.id }}</td>
-              <td>{{ data.timestamp }}</td>
-              <td>{{ data.user_agent }}</td>
-              <td>{{ data.Nom }}</td>
-              <td>{{ data.Prenom }}</td>
-              <td><a href="{{ data.link }}">{{ data.link }}</a></td>
-              <td>
-                {% if data.image_tag %}
-                <img src="{{ data.image_tag | safe }}" alt="QR code boisson">
-                {% else %}
-                Aucune image
-                {% endif %}
-              </td>
-              <td>{{ data.essais_restants }}</td>
-              <td>
-                {% if data.essais_restants > 0 %}
-                <form action="/use_drink/{{ data.id }}" method="POST">
-                  <button class="btn" type="submit">Utiliser un essai</button>
-                </form>
-                {% endif %}
-              </td>
-            </tr>
-            {% endfor %}
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Bénéficiaire</th>
+                <th>Code / Données</th>
+                <th>Aperçu QR</th>
+                <th>Essais Restants</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for data in used_entries %}
+              <tr>
+                <td>{{ data.id }}</td>
+                <td><strong>{{ data.Nom or data.nom }}</strong> {{ data.Prenom or data.prenom }}</td>
+                <td>
+                  <code class="text-break">{{ data.qr_data or data.link }}</code>
+                </td>
+                <td>
+                  {% if data.image_tag %}
+                  <img src="{{ data.image_tag }}" data-bs-toggle="modal" data-bs-target="#qrModalDrink-{{ data.id }}" alt="QR code boisson" style="width: 48px; height: 48px; cursor: pointer; border-radius: 6px;" />
+                  <!-- Modal -->
+                  <div class="modal fade" id="qrModalDrink-{{ data.id }}" tabindex="-1" aria-labelledby="qrModalDrinkLabel-{{ data.id }}" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="qrModalDrinkLabel-{{ data.id }}">QR Boisson #{{ data.id }}</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body text-center p-4">
+                          <img src="{{ data.image_tag }}" class="img-fluid rounded shadow-sm mb-3" alt="QR code detail" style="max-width: 260px;">
+                          <h5 class="text-primary font-monospace">{{ data.qr_data }}</h5>
+                          <p class="text-muted">Essais restants : <strong>{{ data.essais_restants }}</strong></p>
+                        </div>
+                        <div class="modal-footer">
+                          <a href="{{ data.image_tag }}" download="boisson-{{ data.id }}.png" class="btn btn-primary btn-sm">
+                            <i class="bi bi-download"></i> Télécharger
+                          </a>
+                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fermer</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {% else %}
+                  <span class="text-muted">Aucune image</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if data.essais_restants > 1 %}
+                    <span class="badge bg-success fs-6">{{ data.essais_restants }} restants</span>
+                  {% elif data.essais_restants == 1 %}
+                    <span class="badge bg-warning text-dark fs-6">Dernier essai !</span>
+                  {% else %}
+                    <span class="badge bg-secondary fs-6">Épuisé</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if data.essais_restants > 0 %}
+                  <form action="/use_drink/{{ data.id }}" method="POST">
+                    <button class="btn btn-primary btn-sm" type="submit">
+                      <i class="bi bi-cup-straw"></i> Consommer un essai
+                    </button>
+                  </form>
+                  {% else %}
+                  <span class="text-muted"><i class="bi bi-check2-all"></i> Terminé</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="6" class="text-center py-4 text-muted">
+                  <i class="bi bi-cup-straw fs-2 d-block mb-2"></i>
+                  Aucun QR code boisson actif. Cliquez sur "Générer une nouvelle boisson" pour en créer un !
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
           </table>
         </div>
       </section>
 
-      <section class="link-row">
-        <a class="btn" href="/home">Retour accueil</a>
-        <a class="btn" href="/history">Historique</a>
-        <a class="btn" href="/boissons">Boissons dispo</a>
+      <section class="d-flex justify-content-center gap-3 mt-4">
+        <a class="btn btn-outline-dark" href="/"><i class="bi bi-arrow-left"></i> Accueil</a>
+        <a class="btn btn-outline-secondary" href="/history"><i class="bi bi-clock-history"></i> Historique</a>
       </section>
     </main>
   </body>

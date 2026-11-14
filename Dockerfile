@@ -1,35 +1,38 @@
 FROM python:3.12-slim
 
-# Installation des dépendances système nécessaires pour Chrome
-RUN apt-get update && apt-get install -y \
-    wget \
-    gnupg \
-    unzip \
+# Empêche Python d'écrire des fichiers .pyc et force l'affichage immédiat des logs
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PORT=5000
+
+# Installation des dépendances système, de Chromium et de ChromeDriver (multi-architecture amd64 & arm64)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    chromium \
+    chromium-driver \
     curl \
-    libnss3 \
-    libatk-bridge2.0-0 \
-    libgtk-3-0 \
-    libx11-xcb1 \
-    libxcb-dri3-0 \
-    libxss1 \
-    libgbm1 \
-    libasound2 \
-    && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/googlechrome-linux-keyring.gpg \
-    && sh -c 'echo "deb [arch=amd64 signed-by=/usr/share/keyrings/googlechrome-linux-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list' \
-    && apt-get update && apt-get install -y google-chrome-stable \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    ca-certificates \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# On copie les requirements en premier pour gagner du temps au prochain build
+# Optimisation du cache Docker : installation des dépendances Python en premier
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# On copie tout le reste
+# Copie de l'intégralité du code source
 COPY . .
 
-# On expose le port 5000 (celui de ton app.py)
+# Création d'un utilisateur non-root pour la sécurité
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+# Exposition du port applicatif
 EXPOSE 5000
 
-# Lancement avec Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
+# Healthcheck natif pour orchestrateurs Docker / Kubernetes / Render
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:5000/api/health || exit 1
+
+# Lancement sécurisé avec Gunicorn (multi-threads + timeout adapté aux traitements)
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "4", "--timeout", "120", "app:app"]

@@ -3,66 +3,133 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR App</title>
+    <title>Générateur QR Carte App - Basic-Fit</title>
     <link rel="icon" href="{{ url_for('static', filename='images.ico') }}" type="image/x-icon">
-    <link rel="stylesheet" type="text/css" href="../static/app.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='app.css') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
     <link rel="apple-touch-icon" sizes="120x120" href="{{ url_for('static', filename='apple-touch-icon-120x120.png') }}">
     <link rel="apple-touch-icon" sizes="152x152" href="{{ url_for('static', filename='apple-touch-icon-152x152.png') }}">
     <link rel="apple-touch-icon" sizes="167x167" href="{{ url_for('static', filename='apple-touch-icon-167x167.png') }}">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   </head>
   <body>
     <header class="site-header">
       <nav class="nav-bar">
         <a class="brand" href="/">
           <span>Basic-Fit</span>
-          <small>QR App</small>
+          <small>QR App v2.0</small>
         </a>
         <div class="nav-links">
-          <a href="/">Accueil</a>
-          <a href="/history">Historique</a>
-          <a href="/get_boisson_image">Boissons</a>
-          <a href="/app">App</a>
+          <a href="/"><i class="bi bi-house-door"></i> Accueil</a>
+          <a href="/history"><i class="bi bi-clock-history"></i> Historique</a>
+          <a href="/boissons"><i class="bi bi-cup-straw"></i> Boissons Suivi</a>
+          <a href="/get_boisson_image"><i class="bi bi-plus-circle"></i> Nouveau QR Boisson</a>
+          <a href="/app"><i class="bi bi-phone"></i> Carte App</a>
         </div>
       </nav>
     </header>
 
     <main class="page">
-      <section class="hero">
-        <div>
-          <h1>Generateur QR App</h1>
-          <p>Entrez le numero de carte pour generer un QR code app instantane.</p>
-        </div>
-        <div class="card">
-          <div class="input-row">
-            <input type="text" id="success" class="input-field" placeholder="Numero de carte" aria-label="Numero de Carte">
-            <button id="generateBtn" class="btn" type="button">Generer</button>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="container my-3">
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show shadow-sm" role="alert">
+                <strong>{{ message }}</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+              </div>
+            {% endfor %}
           </div>
-        </div>
+        {% endif %}
+      {% endwith %}
+
+      <section class="hero text-center">
+        <h1>Générateur QR Application Membre</h1>
+        <p>Générez le code QR officiel de votre carte membre (protocole GM2) pour franchir les portiques des clubs.</p>
       </section>
 
-      <section class="card qr-block" id="qrCodeContainer" style="display: none;">
-        <h3>Votre QR code</h3>
-        <img id="qrCodeImage" src="" alt="QR code app">
+      <section class="card p-4 mx-auto" style="max-width: 550px;">
+        <form id="appQrForm" action="/generate_app_qr" method="POST">
+          <label for="cardNumber" class="form-label fw-semibold">Numéro de carte adhérent :</label>
+          <div class="input-group mb-3">
+            <span class="input-group-text"><i class="bi bi-credit-card-2-front"></i></span>
+            <input type="text" id="cardNumber" name="card_number" class="form-control" placeholder="Ex: 80045291" value="{{ card_number or '' }}" required>
+            <button class="btn btn-outline-secondary" type="button" id="randomCardBtn" title="Générer un numéro aléatoire">
+              <i class="bi bi-dice-5"></i>
+            </button>
+          </div>
+          <button id="generateBtn" class="btn btn-primary w-100 py-2" type="submit">
+            <i class="bi bi-qr-code-scan"></i> Générer le QR Code Portique
+          </button>
+        </form>
+
+        <div id="qrCodeContainer" class="mt-4 text-center p-3 border rounded bg-light" style="display: {{ 'block' if link else 'none' }};">
+          <div class="badge bg-success mb-2">QR Code Portique Actif</div>
+          <h6 class="text-muted">Format Basic-Fit GM2 Dynamique</h6>
+          <img id="qrCodeImage" src="{{ link or '' }}" alt="QR code app" class="mx-auto my-3 rounded shadow-sm" style="max-width: 240px; display: block;">
+          <div class="p-2 bg-white rounded border mb-3">
+            <small class="text-muted d-block">Trame brute :</small>
+            <code id="qrCodeData" class="text-break small">{{ raw_code or '' }}</code>
+          </div>
+          <div class="d-flex gap-2 justify-content-center">
+            <a id="downloadQrBtn" href="{{ link or '#' }}" download="pass-portique.png" class="btn btn-primary btn-sm">
+              <i class="bi bi-download"></i> Télécharger
+            </a>
+            <a href="/history" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-clock-history"></i> Historique
+            </a>
+          </div>
+        </div>
       </section>
     </main>
 
     <script>
-      function generateQRCodeLink() {
-        var temp = document.getElementById("success").value;
-        const baseURL = "https://basic-fit-qr-code-generator.herokuapp.com/create-qr-code?data=";
-        const baseText = "GM2:" + temp + ":BPZ:";
-        const endText = ":95A5CAF2";
-        let randomPart = Date.now();
-        const finish = baseText + randomPart + endText;
-        return baseURL + finish;
-      }
+      // Random card number generator button
+      document.getElementById("randomCardBtn").addEventListener("click", () => {
+        const randNum = Math.floor(10000000 + Math.random() * 90000000);
+        document.getElementById("cardNumber").value = randNum;
+      });
 
-      document.getElementById("generateBtn").addEventListener("click", () => {
-        const qrCodeLink = generateQRCodeLink();
-        const qrCodeImage = document.getElementById("qrCodeImage");
-        qrCodeImage.src = qrCodeLink;
-        document.getElementById("qrCodeContainer").style.display = "grid";
+      // AJAX form submission for instant rendering without reload
+      document.getElementById("appQrForm").addEventListener("submit", async function(e) {
+        e.preventDefault();
+        const cardVal = document.getElementById("cardNumber").value.trim() || "12345678";
+        const btn = document.getElementById("generateBtn");
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Génération...';
+
+        try {
+          const formData = new FormData();
+          formData.append("card_number", cardVal);
+
+          const res = await fetch("/generate_app_qr", {
+            method: "POST",
+            headers: {
+              "X-Requested-With": "XMLHttpRequest"
+            },
+            body: formData
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            document.getElementById("qrCodeImage").src = data.image;
+            document.getElementById("qrCodeData").textContent = data.code;
+            document.getElementById("downloadQrBtn").href = data.image;
+            document.getElementById("downloadQrBtn").download = `carte-${data.card_number}.png`;
+            document.getElementById("qrCodeContainer").style.display = "block";
+          } else {
+            // Fallback to native submission
+            this.submit();
+          }
+        } catch (err) {
+          console.warn("AJAX failed, falling back to form submit", err);
+          this.submit();
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="bi bi-qr-code-scan"></i> Générer le QR Code Portique';
+        }
       });
     </script>
   </body>

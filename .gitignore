@@ -1,0 +1,34 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# SQLite databases
+*.db
+*.db-journal
+*.db-wal
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local JSON runtime files
+visitor_log.json
+used_qr_codes.json
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# IDE / OS
+.DS_Store
+.vscode/
+.idea/
