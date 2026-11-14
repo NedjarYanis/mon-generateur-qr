@@ -191,19 +191,19 @@ def appGen():
 
 @app.route('/generate_app_qr', methods=['POST'])
 def generate_app_qr():
-    card_number = request.form.get("card_number", "").strip() or "12345678"
+    card_number = request.form.get("card_number", "").strip() or "V00347833"
+    device_id = request.form.get("device_id", "").strip() or "8d20fc96-1b0e-4982-8292-e97caed114ec"
     user_agent = request.headers.get('User-Agent', '')
     
-    code = format_app_card_code(card_number)
+    code = format_app_card_code(card_number, device_id=device_id)
     data_url = generate_qr_data_url(code)
-    online_link = f"https://basic-fit-qr-code-generator.herokuapp.com/create-qr-code?data={code}"
     
     save_pass(
         pass_type="app",
-        nom="Carte App",
-        prenom=f"N° {card_number}",
+        nom="Carte Portique",
+        prenom=card_number,
         card_number=card_number,
-        link=online_link,
+        link=code,
         image_tag=data_url,
         user_agent=user_agent,
         qr_data=code,
@@ -218,7 +218,7 @@ def generate_app_qr():
             "card_number": card_number
         })
         
-    flash(f"QR App généré pour la carte {card_number}", "success")
+    flash(f"QR Portique généré pour la carte {card_number}", "success")
     return render_template("qrAppGen.html", link=data_url, card_number=card_number, raw_code=code)
 
 # --- NATIVE QR IMAGE API ---

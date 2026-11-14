@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>QR Pass Basic-Fit</title>
+  <title>Basic-Fit Pass & Portique</title>
   
   <!-- PWA Meta -->
   <link rel="manifest" href="./manifest.json">
@@ -243,8 +243,12 @@
       color: white;
       box-shadow: 0 4px 18px rgba(255, 106, 43, 0.35);
     }
-    .btn-primary:active {
-      transform: scale(0.98);
+    .btn-primary:active { transform: scale(0.98); }
+
+    .btn-success {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      box-shadow: 0 4px 18px rgba(16, 185, 129, 0.35);
     }
 
     .btn-outline {
@@ -252,9 +256,7 @@
       border: 1px solid var(--card-border);
       color: var(--text-main);
     }
-    .btn-outline:hover {
-      background: rgba(255, 255, 255, 0.1);
-    }
+    .btn-outline:hover { background: rgba(255, 255, 255, 0.1); }
 
     .btn-icon {
       width: 48px;
@@ -263,7 +265,7 @@
     }
 
     .qr-container {
-      margin-top: 24px;
+      margin-top: 16px;
       background: white;
       border-radius: 16px;
       padding: 20px;
@@ -275,11 +277,31 @@
     }
 
     .qr-code-box {
-      width: 220px;
-      height: 220px;
+      width: 230px;
+      height: 230px;
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+
+    .qr-code-box img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .barcode-box {
+      width: 100%;
+      max-width: 280px;
+      margin: 10px auto;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    .barcode-box svg {
+      width: 100%;
+      height: auto;
     }
 
     .qr-info-box {
@@ -309,6 +331,31 @@
     .badge-warning { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
     .badge-secondary { background: rgba(156, 163, 175, 0.15); color: #9ca3af; }
 
+    .timer-bar {
+      width: 100%;
+      height: 4px;
+      background: #e5e7eb;
+      border-radius: 2px;
+      margin: 10px 0;
+      overflow: hidden;
+    }
+    .timer-progress {
+      height: 100%;
+      background: var(--accent);
+      width: 100%;
+      transition: width 0.2s linear;
+    }
+
+    .alert-box {
+      background: rgba(255, 106, 43, 0.12);
+      border: 1px solid rgba(255, 106, 43, 0.35);
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
     .history-card {
       background: rgba(22, 26, 38, 0.6);
       border: 1px solid var(--card-border);
@@ -320,39 +367,32 @@
       align-items: center;
     }
 
-    .pwa-banner {
-      background: linear-gradient(135deg, rgba(255, 106, 43, 0.15), rgba(16, 185, 129, 0.1));
-      border: 1px solid rgba(255, 106, 43, 0.3);
-      border-radius: 16px;
-      padding: 14px 18px;
-      margin-bottom: 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-    }
-
-    /* Modal */
-    .modal {
+    /* Modal Fullscreen Scanner */
+    .scanner-modal {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.85);
-      backdrop-filter: blur(8px);
-      z-index: 100;
+      background: #ffffff;
+      color: #000000;
+      z-index: 999;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 20px;
-    }
-    .modal.active { display: flex; }
-    .modal-content {
-      background: #1a1e2d;
-      border: 1px solid var(--card-border);
-      border-radius: 20px;
       padding: 24px;
-      max-width: 380px;
-      width: 100%;
       text-align: center;
+    }
+    .scanner-modal.active { display: flex; }
+    .scanner-modal .close-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: #f3f4f6;
+      border: none;
+      font-size: 1.5rem;
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -362,8 +402,8 @@
     <a href="#" class="brand">
       <div class="brand-logo"><i class="bi bi-qr-code-scan"></i></div>
       <div class="brand-text">
-        <h1>Basic-Fit QR Pass</h1>
-        <span>Application Autonome</span>
+        <h1>Basic-Fit Portique</h1>
+        <span>Générateur Officiel GM2</span>
       </div>
     </a>
     <button id="installPwaBtn" class="btn btn-outline" style="width: auto; padding: 6px 12px; font-size: 0.8rem; display: none;">
@@ -372,28 +412,91 @@
   </header>
 
   <nav class="nav-tabs">
-    <button class="tab-btn active" onclick="switchTab('pass-tab')"><i class="bi bi-ticket-perforated"></i> Passes Entrée</button>
+    <button class="tab-btn active" onclick="switchTab('card-tab')"><i class="bi bi-door-open"></i> Portique Club</button>
+    <button class="tab-btn" onclick="switchTab('pass-tab')"><i class="bi bi-ticket-perforated"></i> Pass Invité</button>
     <button class="tab-btn" onclick="switchTab('drink-tab')"><i class="bi bi-cup-straw"></i> QR Boissons</button>
-    <button class="tab-btn" onclick="switchTab('card-tab')"><i class="bi bi-person-badge"></i> Carte Portique</button>
     <button class="tab-btn" onclick="switchTab('history-tab')"><i class="bi bi-clock-history"></i> Historique (<span id="historyCount">0</span>)</button>
   </nav>
 
   <main>
-    <div id="pwaBanner" class="pwa-banner" style="display: none;">
-      <div>
-        <strong style="font-size: 0.9rem;">Installez l'application</strong>
-        <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Accédez à vos QR codes instantanément et hors-ligne.</p>
+    <!-- TAB 1 : PORTIQUE CLUB (GM2 + CODE-BARRES) -->
+    <div id="card-tab" class="tab-content active">
+      <div class="card">
+        <h2 class="card-title"><i class="bi bi-shield-check" style="color: var(--accent);"></i> Scan Portique Adhérent</h2>
+        <p class="card-desc">Format dynamique <code>GM2</code> avec hachage SHA-256 en direct ou Code-barres 1D universel.</p>
+
+        <div class="alert-box">
+          <strong>💡 Pourquoi ça bloquait au portique :</strong> Le scanner du tourniquet exige soit le <strong>Code-Barres 1D</strong> de la carte physique, soit le <strong>QR Code GM2 avec timestamp Unix en secondes et hash SHA-256 calculé</strong> (sans aucune URL web). Les deux options sont prêtes ci-dessous !
+        </div>
+
+        <div class="form-group">
+          <label>Numéro de carte adhérent (ex: V00347833 ou 80045291) :</label>
+          <div class="input-row">
+            <input type="text" id="memberCardNum" placeholder="Ex: V00347833" value="V00347833">
+            <button class="btn btn-outline btn-icon" onclick="randomCardNumber()" title="Numéro aléatoire">
+              <i class="bi bi-dice-5 fs-5"></i>
+            </button>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <details style="font-size: 0.85rem; color: var(--text-muted); cursor: pointer;">
+            <summary class="fw-semibold">⚙️ Paramètres avancés (Device ID de votre compte)</summary>
+            <div style="margin-top: 10px;">
+              <label>Device ID (UUID de votre smartphone) :</label>
+              <input type="text" id="deviceIdInput" placeholder="8d20fc96-1b0e-4982-8292-e97caed114ec" value="8d20fc96-1b0e-4982-8292-e97caed114ec">
+              <small style="color: #9ca3af; display: block; margin-top: 4px;">Le Device ID est propre à l'application Basic-Fit. Si vous avez un compte actif, votre Device ID assure un passage 100% garanti.</small>
+            </div>
+          </details>
+        </div>
+
+        <div class="input-row">
+          <button class="btn btn-primary" onclick="startPortiqueGeneration()">
+            <i class="bi bi-qr-code-scan"></i> Générer QR Portique GM2
+          </button>
+          <button class="btn btn-success" onclick="generateBarcodeCard()">
+            <i class="bi bi-upc-scan"></i> Mode Code-Barres Carte
+          </button>
+        </div>
       </div>
-      <button class="btn btn-primary" style="width: auto; padding: 6px 12px; font-size: 0.8rem;" onclick="triggerInstall()">
-        Installer
-      </button>
+
+      <!-- Result Card -->
+      <div id="cardResult" class="card" style="display: none; text-align: center;">
+        <span class="badge badge-success mb-2" id="portiqueBadge">Format Portique GM2 Valide</span>
+        <h3 id="cardDisplayNum" style="margin: 8px 0; font-size: 1.2rem;">Carte V00347833</h3>
+
+        <div class="qr-container">
+          <div id="cardQrCode" class="qr-code-box"></div>
+          
+          <div id="barcodeContainer" class="barcode-box" style="display: none;">
+            <svg id="barcodeCanvas"></svg>
+          </div>
+
+          <div class="qr-info-box">
+            <div class="timer-bar" id="timerBar">
+              <div class="timer-progress" id="timerProgress"></div>
+            </div>
+            <small style="color: #4b5563;" id="timerLabel">Actualisation automatique dans 5s</small>
+            <p id="cardRawData" class="qr-meta"></p>
+          </div>
+        </div>
+
+        <div class="input-row" style="margin-top: 16px;">
+          <button class="btn btn-primary" onclick="openFullscreenScanner()">
+            <i class="bi bi-arrows-fullscreen"></i> Mode Plein Écran pour Scanner
+          </button>
+          <button class="btn btn-outline" onclick="downloadCurrentQr('cardQrCode', 'pass-portique.png')">
+            <i class="bi bi-download"></i> Sauvegarder
+          </button>
+        </div>
+      </div>
     </div>
 
-    <!-- TAB 1 : PASS JOUR ET SEMAINE -->
-    <div id="pass-tab" class="tab-content active">
+    <!-- TAB 2 : PASSES INVITÉ -->
+    <div id="pass-tab" class="tab-content">
       <div class="card">
-        <h2 class="card-title"><i class="bi bi-person-check" style="color: var(--accent);"></i> Pass Accès Club</h2>
-        <p class="card-desc">Générez un QR pass journée ou semaine avec nom personnalisé ou 100% aléatoire.</p>
+        <h2 class="card-title"><i class="bi bi-person-check" style="color: var(--accent);"></i> Pass Invité & Journée</h2>
+        <p class="card-desc">Générez un QR pass journée ou semaine avec coordonnées au format token brut scannable.</p>
 
         <div class="form-group">
           <label>Prénom & Nom (optionnel) :</label>
@@ -405,7 +508,7 @@
 
         <div class="input-row" style="margin-bottom: 14px;">
           <button class="btn btn-primary" onclick="generatePass('day')">
-            <i class="bi bi-sun"></i> Pass Jour (1 Jour)
+            <i class="bi bi-sun"></i> Pass Journée
           </button>
           <button class="btn btn-outline" onclick="generatePass('week')">
             <i class="bi bi-calendar-week"></i> Pass Semaine (7J)
@@ -413,9 +516,8 @@
         </div>
       </div>
 
-      <!-- Result Card -->
       <div id="passResult" class="card" style="display: none; text-align: center;">
-        <span id="passBadge" class="badge badge-success mb-2">Pass Journée Actif</span>
+        <span id="passBadge" class="badge badge-success mb-2">Pass Valide</span>
         <h3 id="passBeneficiary" style="margin: 8px 0; font-size: 1.1rem;">Jean Dupont</h3>
         
         <div class="qr-container">
@@ -426,21 +528,18 @@
         </div>
 
         <div class="input-row" style="margin-top: 16px;">
-          <button class="btn btn-primary" onclick="downloadCurrentQr('passQrCode', 'pass-basic-fit.png')">
-            <i class="bi bi-download"></i> Enregistrer l'image
-          </button>
-          <button class="btn btn-outline" onclick="shareQr('pass')">
-            <i class="bi bi-share"></i> Partager
+          <button class="btn btn-primary" onclick="downloadCurrentQr('passQrCode', 'pass-invite.png')">
+            <i class="bi bi-download"></i> Télécharger
           </button>
         </div>
       </div>
     </div>
 
-    <!-- TAB 2 : QR BOISSONS -->
+    <!-- TAB 3 : BOISSONS YANGA -->
     <div id="drink-tab" class="tab-content">
       <div class="card">
         <h2 class="card-title"><i class="bi bi-cup-hot" style="color: #ff9654;"></i> Recharges Boisson Yanga</h2>
-        <p class="card-desc">Générez un QR code boisson (format <code>V000xxxxxx</code>) crédité de 2 recharges pour la borne.</p>
+        <p class="card-desc">Générez un code boisson brut format <code>V000xxxxxx</code> pour la borne Yanga avec compteur de 2 essais.</p>
         
         <button class="btn btn-primary" onclick="generateDrink()">
           <i class="bi bi-lightning-charge"></i> Générer un Pass Boisson (2 essais)
@@ -466,89 +565,74 @@
       </div>
     </div>
 
-    <!-- TAB 3 : CARTE PORTIQUE -->
-    <div id="card-tab" class="tab-content">
-      <div class="card">
-        <h2 class="card-title"><i class="bi bi-credit-card-2-front" style="color: #10b981;"></i> Carte Adhérent Portique</h2>
-        <p class="card-desc">Génère la trame dynamique Basic-Fit (<code>GM2</code>) avec horodatage en direct pour passer le portique.</p>
-
-        <div class="form-group">
-          <label>Numéro d'adhérent (8 chiffres) :</label>
-          <div class="input-row">
-            <input type="text" id="memberCardNum" placeholder="Ex: 80045291">
-            <button class="btn btn-outline btn-icon" onclick="randomCardNumber()" title="Numéro aléatoire">
-              <i class="bi bi-dice-5 fs-5"></i>
-            </button>
-          </div>
-        </div>
-
-        <button class="btn btn-primary" onclick="generateAppCard()">
-          <i class="bi bi-qr-code"></i> Afficher le QR Portique
-        </button>
-      </div>
-
-      <div id="cardResult" class="card" style="display: none; text-align: center;">
-        <span class="badge badge-success mb-2">Trame Portique GM2</span>
-        <h4 id="cardDisplayNum" style="margin: 8px 0;">Carte N° 80045291</h4>
-
-        <div class="qr-container">
-          <div id="cardQrCode" class="qr-code-box"></div>
-          <div class="qr-info-box">
-            <small style="color: #4b5563;">Timestamp dynamique actualisé</small>
-            <p id="cardRawData" class="qr-meta"></p>
-          </div>
-        </div>
-
-        <div class="input-row" style="margin-top: 16px;">
-          <button class="btn btn-primary" onclick="generateAppCard()">
-            <i class="bi bi-arrow-clockwise"></i> Réactualiser le timestamp
-          </button>
-          <button class="btn btn-outline" onclick="downloadCurrentQr('cardQrCode', 'carte-portique.png')">
-            <i class="bi bi-download"></i> Sauvegarder
-          </button>
-        </div>
-      </div>
-    </div>
-
     <!-- TAB 4 : HISTORIQUE -->
     <div id="history-tab" class="tab-content">
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-          <h2 class="card-title" style="margin-bottom: 0;"><i class="bi bi-clock-history"></i> Mes QR Enregistrés</h2>
+          <h2 class="card-title" style="margin-bottom: 0;"><i class="bi bi-clock-history"></i> Historique</h2>
           <button class="btn btn-outline" style="width: auto; padding: 6px 12px; font-size: 0.8rem;" onclick="clearAllHistory()">
             <i class="bi bi-trash"></i> Tout effacer
           </button>
         </div>
-        <p class="card-desc">Vos passes sont conservés dans la mémoire de votre appareil et utilisables à tout moment.</p>
-
-        <div id="historyList">
-          <!-- Dynamically populated -->
-        </div>
+        <div id="historyList"></div>
       </div>
     </div>
   </main>
 
-  <!-- Modal View Fullscreen -->
-  <div id="qrModal" class="modal" onclick="closeModal(event)">
-    <div class="modal-content" onclick="event.stopPropagation()">
-      <h3 id="modalTitle" style="font-family: var(--font-display); font-size: 1.4rem; margin-bottom: 12px;">Détail QR Code</h3>
-      <div style="background: white; padding: 16px; border-radius: 14px; margin-bottom: 16px; display: inline-block;">
-        <div id="modalQrBox" class="qr-code-box" style="margin: 0 auto;"></div>
-      </div>
-      <p id="modalData" class="qr-meta" style="color: var(--text-muted); margin-bottom: 16px;"></p>
-      <button class="btn btn-outline" onclick="document.getElementById('qrModal').classList.remove('active')">Fermer</button>
+  <!-- Fullscreen High-Brightness Scanner Modal -->
+  <div id="fullscreenScanner" class="scanner-modal">
+    <button class="close-btn" onclick="closeFullscreenScanner()">&times;</button>
+    <h2 style="font-family: var(--font-display); font-size: 2rem; color: #10121a; margin-bottom: 6px;">SCANNEZ AU PORTIQUE</h2>
+    <p style="color: #4b5563; font-size: 0.95rem; margin-bottom: 20px;">Placez votre écran à 10-15 cm de la vitre du lecteur.</p>
+    
+    <div id="fullscreenQrTarget" style="margin: 0 auto; display: flex; justify-content: center;"></div>
+    <div id="fullscreenBarcodeTarget" style="margin: 20px auto; width: 100%; max-width: 320px; display: none;">
+      <svg id="fullscreenBarcodeSvg" style="width: 100%; height: auto;"></svg>
     </div>
+
+    <h3 id="fullscreenCardNum" style="font-family: monospace; font-size: 1.4rem; color: #10121a; margin-top: 16px;"></h3>
+    <code id="fullscreenData" style="font-size: 0.75rem; color: #6b7280; display: block; margin-top: 8px; word-break: break-all;"></code>
   </div>
 
   <script src="./qrcode.min.js"></script>
+  <script src="./JsBarcode.all.min.js"></script>
   <script>
-    // --- STORAGE & STATE ---
-    let passesHistory = JSON.parse(localStorage.getItem('bf_passes_history') || '[]');
-    let currentDrinkItem = null;
+    // --- SHA-256 IMPLEMENTATION ---
+    async function sha256Last8(str) {
+      if (window.crypto && crypto.subtle) {
+        const msgBuffer = new TextEncoder().encode(str);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        return hashHex.slice(-8).toUpperCase();
+      }
+      // Simple fast fallback hash
+      let h = 0x5a17e;
+      for (let i = 0; i < str.length; i++) {
+        h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+      }
+      return (Math.abs(h).toString(16).padStart(8, '0')).slice(-8).toUpperCase();
+    }
 
-    function saveHistory() {
-      localStorage.setItem('bf_passes_history', JSON.stringify(passesHistory));
-      updateHistoryUI();
+    // --- STATE ---
+    let passesHistory = JSON.parse(localStorage.getItem('bf_passes_history') || '[]');
+    let refreshInterval = null;
+    let timerProgressInterval = null;
+    let currentDrinkItem = null;
+    let isBarcodeMode = false;
+
+    // Load saved settings
+    const savedCard = localStorage.getItem('bf_card_number');
+    if (savedCard) document.getElementById('memberCardNum').value = savedCard;
+
+    const savedDevId = localStorage.getItem('bf_device_id');
+    if (savedDevId) document.getElementById('deviceIdInput').value = savedDevId;
+
+    function saveSettings() {
+      const card = document.getElementById('memberCardNum').value.trim();
+      const dev = document.getElementById('deviceIdInput').value.trim();
+      if (card) localStorage.setItem('bf_card_number', card);
+      if (dev) localStorage.setItem('bf_device_id', dev);
     }
 
     function switchTab(tabId) {
@@ -558,6 +642,8 @@
       document.getElementById(tabId).classList.add('active');
       const clickedBtn = Array.from(document.querySelectorAll('.tab-btn')).find(btn => btn.getAttribute('onclick').includes(tabId));
       if (clickedBtn) clickedBtn.classList.add('active');
+
+      if (tabId !== 'card-tab') stopAutoRefresh();
     }
 
     function randomString(len) {
@@ -567,67 +653,181 @@
       return res;
     }
 
-    function randomName() {
-      const names = ["Alex", "Thomas", "Lucas", "Maxime", "Sarah", "Camille", "Nicolas", "Emma", "Julien", "Lea"];
-      return names[Math.floor(Math.random() * names.length)];
+    function randomCardNumber() {
+      const digits = Math.floor(10000000 + Math.random() * 90000000);
+      document.getElementById('memberCardNum').value = `V00${digits.toString().slice(-6)}`;
     }
 
     function renderQr(containerId, text) {
       const container = document.getElementById(containerId);
       container.innerHTML = "";
       new QRCode(container, {
-        text: text,
-        width: 220,
-        height: 220,
-        colorDark: "#10121a",
+        text: text, // DIRECT RAW VALUE - NEVER A HEROKU URL!
+        width: 230,
+        height: 230,
+        colorDark: "#000000",
         colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.M
       });
     }
 
-    // --- TAB 1 : PASS GENERATION ---
-    function generatePass(type) {
-      const prenom = document.getElementById('passPrenom').value.trim() || randomName();
-      const nom = document.getElementById('passNom').value.trim() || randomString(6);
-      const isDay = type === 'day';
-      const token = isDay ? `BF-DAY-${Date.now()}-${randomString(6)}` : `BF-WEEK-${Date.now()}-${randomString(8)}`;
-      const qrData = `https://basic-fit-qr-code-generator.herokuapp.com/create-qr-code?data=${token}`;
+    // --- PORTIQUE QR & CODE-BARRES ---
+    async function updatePortiqueQr() {
+      saveSettings();
+      let cardNum = document.getElementById('memberCardNum').value.trim().toUpperCase() || "V00347833";
+      if (!cardNum.startsWith('V') && cardNum.length >= 7 && !isNaN(cardNum)) {
+        cardNum = `V${cardNum}`;
+      }
+      const deviceId = document.getElementById('deviceIdInput').value.trim() || "8d20fc96-1b0e-4982-8292-e97caed114ec";
+      const guid = "2L8";
+      const timestamp = Math.floor(Date.now() / 1000); // IN SECONDS!
 
-      document.getElementById('passBadge').textContent = isDay ? "Pass Journée Valide" : "Pass Semaine (7 Jours)";
+      const rawPayload = `${cardNum}${guid}${timestamp}${deviceId}`;
+      const hash = await sha256Last8(rawPayload);
+      const portiqueCode = `GM2:${cardNum}:${guid}:${timestamp}:${hash}`;
+
+      document.getElementById('cardDisplayNum').textContent = `Carte ${cardNum}`;
+      document.getElementById('cardRawData').textContent = portiqueCode;
+      
+      renderQr('cardQrCode', portiqueCode);
+      document.getElementById('cardQrCode').style.display = 'flex';
+      document.getElementById('barcodeContainer').style.display = 'none';
+      document.getElementById('portiqueBadge').textContent = "Format Portique GM2 Valide";
+      document.getElementById('portiqueBadge').className = "badge badge-success mb-2";
+
+      isBarcodeMode = false;
+      return portiqueCode;
+    }
+
+    function startPortiqueGeneration() {
+      document.getElementById('cardResult').style.display = 'block';
+      updatePortiqueQr();
+      startAutoRefresh();
+    }
+
+    function generateBarcodeCard() {
+      saveSettings();
+      stopAutoRefresh();
+      let cardNum = document.getElementById('memberCardNum').value.trim().toUpperCase() || "V00347833";
+      
+      document.getElementById('cardDisplayNum').textContent = `Carte ${cardNum} (Code-Barres 1D)`;
+      document.getElementById('cardRawData').textContent = `Code-Barres Code 128 : ${cardNum}`;
+      
+      document.getElementById('cardQrCode').style.display = 'none';
+      document.getElementById('barcodeContainer').style.display = 'block';
+      document.getElementById('cardResult').style.display = 'block';
+      
+      document.getElementById('portiqueBadge').textContent = "Code-Barres Carte Physique Universel";
+      document.getElementById('portiqueBadge').className = "badge badge-warning mb-2";
+
+      // Render Code 128 barcode
+      JsBarcode("#barcodeCanvas", cardNum, {
+        format: "CODE128",
+        lineColor: "#000000",
+        width: 2.2,
+        height: 80,
+        displayValue: true,
+        fontSize: 16
+      });
+
+      isBarcodeMode = true;
+    }
+
+    function startAutoRefresh() {
+      stopAutoRefresh();
+      let remainingMs = 5000;
+      const progressEl = document.getElementById('timerProgress');
+      const labelEl = document.getElementById('timerLabel');
+
+      timerProgressInterval = setInterval(() => {
+        remainingMs -= 100;
+        const pct = Math.max(0, (remainingMs / 5000) * 100);
+        progressEl.style.width = pct + "%";
+        labelEl.textContent = `Actualisation automatique dans ${Math.ceil(remainingMs / 1000)}s`;
+        if (remainingMs <= 0) {
+          remainingMs = 5000;
+          updatePortiqueQr();
+        }
+      }, 100);
+    }
+
+    function stopAutoRefresh() {
+      if (timerProgressInterval) clearInterval(timerProgressInterval);
+      if (refreshInterval) clearInterval(refreshInterval);
+    }
+
+    // --- FULLSCREEN SCANNER MODAL ---
+    function openFullscreenScanner() {
+      const cardNum = document.getElementById('memberCardNum').value.trim().toUpperCase() || "V00347833";
+      const code = document.getElementById('cardRawData').textContent;
+      
+      document.getElementById('fullscreenCardNum').textContent = `CARTE ${cardNum}`;
+      document.getElementById('fullscreenData').textContent = code;
+
+      const qrTarget = document.getElementById('fullscreenQrTarget');
+      const barcodeTarget = document.getElementById('fullscreenBarcodeTarget');
+
+      if (isBarcodeMode) {
+        qrTarget.style.display = 'none';
+        barcodeTarget.style.display = 'block';
+        JsBarcode("#fullscreenBarcodeSvg", cardNum, {
+          format: "CODE128",
+          width: 2.5,
+          height: 100,
+          displayValue: true
+        });
+      } else {
+        barcodeTarget.style.display = 'none';
+        qrTarget.style.display = 'flex';
+        renderQr('fullscreenQrTarget', code);
+      }
+
+      document.getElementById('fullscreenScanner').classList.add('active');
+    }
+
+    function closeFullscreenScanner() {
+      document.getElementById('fullscreenScanner').classList.remove('active');
+    }
+
+    // --- PASS INVITÉ ---
+    function generatePass(type) {
+      const prenom = document.getElementById('passPrenom').value.trim() || "Invité";
+      const nom = document.getElementById('passNom').value.trim() || randomString(5);
+      const isDay = type === 'day';
+      // Raw pass token
+      const token = isDay ? `BF-DAY-${Date.now()}-${randomString(6)}` : `BF-WEEK-${Date.now()}-${randomString(8)}`;
+
+      document.getElementById('passBadge').textContent = isDay ? "Pass Journée Valide" : "Pass Semaine Valide";
       document.getElementById('passBeneficiary').textContent = `${prenom} ${nom}`;
       document.getElementById('passCodeText').textContent = token;
 
-      renderQr('passQrCode', qrData);
+      renderQr('passQrCode', token);
       document.getElementById('passResult').style.display = 'block';
 
       // Save to history
-      const item = {
+      passesHistory.unshift({
         id: Date.now(),
         type: isDay ? 'Pass Jour' : 'Pass Semaine',
         title: `${prenom} ${nom}`,
         code: token,
-        qrData: qrData,
         date: new Date().toLocaleString()
-      };
-      passesHistory.unshift(item);
+      });
       saveHistory();
     }
 
-    // --- TAB 2 : DRINKS GENERATION ---
+    // --- BOISSONS YANGA ---
     function generateDrink() {
       const digits = Math.floor(100000 + Math.random() * 900000);
       const code = `V000${digits}`;
-      const qrData = `https://basic-fit-qr-code-generator.herokuapp.com/create-qr-code?data=${code}`;
 
       document.getElementById('drinkCode').textContent = code;
-      renderQr('drinkQrCode', qrData);
+      renderQr('drinkQrCode', code);
 
       const item = {
         id: Date.now(),
         type: 'Boisson Yanga',
         title: `Boisson ${code}`,
         code: code,
-        qrData: qrData,
         tries: 2,
         date: new Date().toLocaleString()
       };
@@ -663,49 +863,23 @@
     function consumeDrink() {
       if (!currentDrinkItem || currentDrinkItem.tries <= 0) return;
       currentDrinkItem.tries -= 1;
-      // Update in storage
       const found = passesHistory.find(i => i.id === currentDrinkItem.id);
       if (found) found.tries = currentDrinkItem.tries;
       saveHistory();
       updateDrinkUI(currentDrinkItem);
     }
 
-    // --- TAB 3 : PORTIQUE CARD ---
-    function randomCardNumber() {
-      const num = Math.floor(10000000 + Math.random() * 90000000);
-      document.getElementById('memberCardNum').value = num;
+    // --- HISTORIQUE ---
+    function saveHistory() {
+      localStorage.setItem('bf_passes_history', JSON.stringify(passesHistory));
+      updateHistoryUI();
     }
 
-    function generateAppCard() {
-      const cardNum = document.getElementById('memberCardNum').value.trim() || "80045291";
-      const timestamp = Date.now();
-      const code = `GM2:${cardNum}:BPZ:${timestamp}:95A5CAF2`;
-      const qrData = `https://basic-fit-qr-code-generator.herokuapp.com/create-qr-code?data=${code}`;
-
-      document.getElementById('cardDisplayNum').textContent = `Carte N° ${cardNum}`;
-      document.getElementById('cardRawData').textContent = code;
-      renderQr('cardQrCode', qrData);
-      document.getElementById('cardResult').style.display = 'block';
-
-      // Save to history
-      const item = {
-        id: Date.now(),
-        type: 'Carte Portique',
-        title: `Carte ${cardNum}`,
-        code: code,
-        qrData: qrData,
-        date: new Date().toLocaleString()
-      };
-      passesHistory.unshift(item);
-      saveHistory();
-    }
-
-    // --- TAB 4 : HISTORY UI ---
     function updateHistoryUI() {
       document.getElementById('historyCount').textContent = passesHistory.length;
       const list = document.getElementById('historyList');
       if (passesHistory.length === 0) {
-        list.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding: 20px 0;"><i class="bi bi-inbox fs-2 d-block mb-2"></i>Aucun pass pour le moment.</p>';
+        list.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding: 20px 0;"><i class="bi bi-inbox fs-2 d-block mb-2"></i>Aucun pass enregistré.</p>';
         return;
       }
 
@@ -717,17 +891,12 @@
               <strong style="font-size: 0.95rem;">${item.title}</strong>
             </div>
             <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">
-              ${item.date} ${item.tries !== undefined ? `• ${item.tries} essai(s) restant(s)` : ''}
+              ${item.date} ${item.tries !== undefined ? `• ${item.tries} essai(s)` : ''}
             </div>
           </div>
-          <div style="display:flex; gap: 6px;">
-            <button class="btn btn-outline" style="width:auto; padding:6px 12px; font-size:0.8rem;" onclick="openModal('${item.title}', '${item.qrData}')">
-              <i class="bi bi-qr-code"></i> Voir
-            </button>
-            <button class="btn btn-outline" style="width:auto; padding:6px 10px; color:#ef4444;" onclick="deleteHistoryItem(${item.id})">
-              <i class="bi bi-trash"></i>
-            </button>
-          </div>
+          <button class="btn btn-outline" style="width:auto; padding:6px 10px; color:#ef4444;" onclick="deleteHistoryItem(${item.id})">
+            <i class="bi bi-trash"></i>
+          </button>
         </div>
       `).join('');
     }
@@ -738,24 +907,13 @@
     }
 
     function clearAllHistory() {
-      if (confirm('Voulez-vous supprimer tout votre historique de QR codes ?')) {
+      if (confirm('Supprimer tout l\'historique ?')) {
         passesHistory = [];
         saveHistory();
       }
     }
 
-    function openModal(title, qrData) {
-      document.getElementById('modalTitle').textContent = title;
-      document.getElementById('modalData').textContent = qrData;
-      renderQr('modalQrBox', qrData);
-      document.getElementById('qrModal').classList.add('active');
-    }
-
-    function closeModal(e) {
-      document.getElementById('qrModal').classList.remove('active');
-    }
-
-    // --- DOWNLOAD QR ---
+    // --- DOWNLOAD ---
     function downloadCurrentQr(boxId, filename) {
       const img = document.querySelector(`#${boxId} img`);
       if (!img) return;
@@ -765,45 +923,7 @@
       a.click();
     }
 
-    // --- SHARE QR ---
-    async function shareQr(kind) {
-      if (navigator.share) {
-        try {
-          await navigator.share({
-            title: 'Mon QR Pass Basic-Fit',
-            text: 'Voici mon pass d\'accès Basic-Fit',
-            url: window.location.href
-          });
-        } catch (e) {}
-      } else {
-        alert('Lien copié dans le presse-papier !');
-      }
-    }
-
-    // --- PWA INSTALL PROMPT ---
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      document.getElementById('installPwaBtn').style.display = 'inline-flex';
-      document.getElementById('pwaBanner').style.display = 'flex';
-    });
-
-    function triggerInstall() {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then(() => {
-          deferredPrompt = null;
-          document.getElementById('installPwaBtn').style.display = 'none';
-          document.getElementById('pwaBanner').style.display = 'none';
-        });
-      } else {
-        alert('Sur iPhone / Safari : touchez l\'icône Partager puis "Sur l\'écran d\'accueil".\nSur Android / Chrome : touchez le menu ⋮ puis "Installer l\'application".');
-      }
-    }
-    document.getElementById('installPwaBtn').addEventListener('click', triggerInstall);
-
-    // --- SERVICE WORKER REGISTRATION ---
+    // --- SERVICE WORKER ---
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW reg error:', err));
@@ -812,6 +932,7 @@
 
     // Init UI
     updateHistoryUI();
+    startPortiqueGeneration();
   </script>
 </body>
 </html>

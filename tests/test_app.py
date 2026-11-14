@@ -48,9 +48,11 @@ def test_qr_service():
     assert boisson.startswith("V000")
     assert len(boisson) == 10
 
-    app_card = format_app_card_code("80012345")
-    assert "GM2:80012345:BPZ:" in app_card
-    assert app_card.endswith(":95A5CAF2")
+    app_card = format_app_card_code("V00347833", device_id="8d20fc96-1b0e-4982-8292-e97caed114ec", guid="2L8")
+    assert app_card.startswith("GM2:V00347833:2L8:")
+    assert len(app_card.split(":")) == 5
+    # Verify hash is 8 uppercase hex characters
+    assert len(app_card.split(":")[-1]) == 8
 
     day_code = format_day_pass_code("Jean", "Dupont")
     assert day_code.startswith("BF-DAY-")
@@ -200,7 +202,7 @@ def test_app_card_generation(client):
     assert res_ajax.status_code == 200
     data = res_ajax.get_json()
     assert data["status"] == "success"
-    assert "GM2:11223344:BPZ:" in data["code"]
+    assert "GM2:V11223344:2L8:" in data["code"]
     assert data["image"].startswith("data:image/png;base64,")
 
 def test_api_qr_endpoint(client):

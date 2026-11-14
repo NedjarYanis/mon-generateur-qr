@@ -3,6 +3,7 @@ const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './qrcode.min.js',
+  './JsBarcode.all.min.js',
   './manifest.json',
   './favicon.ico',
   './icons/apple-touch-icon.png',

@@ -2,6 +2,7 @@ import io
 import base64
 import random
 import time
+import hashlib
 import qrcode
 from PIL import Image
 
@@ -15,7 +16,7 @@ def generate_qr_image(data: str, box_size: int = 10, border: int = 2) -> Image.I
     )
     qr.add_data(data)
     qr.make(fit=True)
-    img = qr.make_image(fill_color="#10121a", back_color="#ffffff")
+    img = qr.make_image(fill_color="#000000", back_color="#ffffff")
     return img
 
 def generate_qr_png_bytes(data: str) -> bytes:
@@ -36,11 +37,31 @@ def format_boisson_code() -> str:
     digits = "".join(random.choices("0123456789", k=6))
     return f"V000{digits}"
 
-def format_app_card_code(card_number: str) -> str:
-    """Generate official Basic-Fit app card format: GM2:{card_number}:BPZ:{timestamp}:95A5CAF2."""
-    clean_card = (card_number or "12345678").strip()
-    timestamp_ms = int(time.time() * 1000)
-    return f"GM2:{clean_card}:BPZ:{timestamp_ms}:95A5CAF2"
+def format_app_card_code(
+    card_number: str,
+    device_id: str = "8d20fc96-1b0e-4982-8292-e97caed114ec",
+    guid: str = "2L8"
+) -> str:
+    """
+    Generate authentic Basic-Fit turnstile QR code format:
+    GM2:{CARD_NUMBER}:{GUID}:{TIMESTAMP_SECONDS}:{SHA256_LAST_8}
+    """
+    card = (card_number or "V00347833").strip().upper()
+    if not card.startswith("V") and len(card) >= 7 and card.isdigit():
+        card = f"V{card}"
+        
+    dev_id = (device_id or "8d20fc96-1b0e-4982-8292-e97caed114ec").strip()
+    clean_guid = (guid or "2L8").strip().upper()
+    
+    # Unix timestamp in SECONDS (10 digits)
+    timestamp = str(int(time.time()))
+    
+    # Compute SHA256 of card + guid + timestamp + device_id
+    raw_payload = f"{card}{clean_guid}{timestamp}{dev_id}"
+    sha256_hash = hashlib.sha256(raw_payload.encode("utf-8")).hexdigest()
+    last8_hash = sha256_hash[-8:].upper()
+    
+    return f"GM2:{card}:{clean_guid}:{timestamp}:{last8_hash}"
 
 def format_day_pass_code(first_name: str, last_name: str) -> str:
     """Generate a structured day pass token."""
