@@ -398,6 +398,26 @@
 </head>
 <body>
 
+  <!-- AUTH LOCK WALL -->
+  <div id="authWall" style="position: fixed; inset: 0; background: #0d0f17; z-index: 99999; display: flex; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: rgba(22, 26, 38, 0.95); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 36px 28px; max-width: 420px; width: 100%; text-align: center; box-shadow: 0 25px 60px rgba(0,0,0,0.7); backdrop-filter: blur(16px);">
+      <div style="width: 60px; height: 60px; background: rgba(255, 106, 43, 0.15); color: #ff6a2b; border-radius: 18px; display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; font-size: 1.8rem;">
+        <i class="bi bi-shield-lock"></i>
+      </div>
+      <h2 style="font-family: var(--font-display); font-size: 1.9rem; letter-spacing: 0.8px; margin-bottom: 6px;">Accès Privé</h2>
+      <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 22px;">Entrez la clé de sécurité pour déverrouiller l'application.</p>
+      <form id="authForm" onsubmit="verifyAuth(event)">
+        <div style="margin-bottom: 14px;">
+          <input type="password" id="authPassword" placeholder="Clé d'accès..." autocomplete="current-password" required style="width: 100%; padding: 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); background: rgba(13, 15, 23, 0.8); color: white; font-size: 1.05rem; text-align: center; letter-spacing: 2px;">
+        </div>
+        <div id="authError" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 12px; display: none;">Clé d'accès invalide.</div>
+        <button type="submit" class="btn btn-primary" style="padding: 14px;">
+          <i class="bi bi-unlock"></i> Déverrouiller
+        </button>
+      </form>
+    </div>
+  </div>
+
   <header>
     <a href="#" class="brand">
       <div class="brand-logo"><i class="bi bi-qr-code-scan"></i></div>
@@ -406,9 +426,14 @@
         <span>Générateur Officiel GM2</span>
       </div>
     </a>
-    <button id="installPwaBtn" class="btn btn-outline" style="width: auto; padding: 6px 12px; font-size: 0.8rem; display: none;">
-      <i class="bi bi-download"></i> Installer
-    </button>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <button id="installPwaBtn" class="btn btn-outline" style="width: auto; padding: 6px 12px; font-size: 0.8rem; display: none;">
+        <i class="bi bi-download"></i> Installer
+      </button>
+      <button class="btn btn-outline" style="width: auto; padding: 6px 10px; color: #ef4444;" onclick="lockSite()" title="Verrouiller l'application">
+        <i class="bi bi-lock-fill"></i>
+      </button>
+    </div>
   </header>
 
   <nav class="nav-tabs">
@@ -928,6 +953,46 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
       a.click();
     }
 
+    // --- AUTHENTICATION GATE (ONE-WAY SALTED HASH) ---
+    const AUTH_SALT = "bf_vault_sec_";
+    const EXPECTED_AUTH_HASH = "59022fe0ffdb6964e7bae43246697951b9df49e4992fbc05b61c0d60e3f5be88";
+
+    async function computeFullSha256(str) {
+      if (window.crypto && crypto.subtle) {
+        const msgBuffer = new TextEncoder().encode(str);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      }
+      return "";
+    }
+
+    async function verifyAuth(e) {
+      if (e) e.preventDefault();
+      const inputEl = document.getElementById('authPassword');
+      const errEl = document.getElementById('authError');
+      const val = inputEl.value.trim();
+      const computed = await computeFullSha256(AUTH_SALT + val);
+
+      if (computed === EXPECTED_AUTH_HASH) {
+        localStorage.setItem("site_vault_unlocked", "true");
+        document.getElementById('authWall').style.display = 'none';
+        errEl.style.display = 'none';
+        inputEl.value = '';
+        startPortiqueGeneration();
+      } else {
+        errEl.style.display = 'block';
+        inputEl.select();
+      }
+    }
+
+    function lockSite() {
+      localStorage.removeItem("site_vault_unlocked");
+      stopAutoRefresh();
+      document.getElementById('authWall').style.display = 'flex';
+      setTimeout(() => document.getElementById('authPassword').focus(), 100);
+    }
+
     // --- SERVICE WORKER ---
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -935,9 +1000,15 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
       });
     }
 
-    // Init UI
+    // Init UI & Check Auth
     updateHistoryUI();
-    startPortiqueGeneration();
+    if (localStorage.getItem("site_vault_unlocked") === "true") {
+      document.getElementById('authWall').style.display = 'none';
+      startPortiqueGeneration();
+    } else {
+      document.getElementById('authWall').style.display = 'flex';
+      setTimeout(() => document.getElementById('authPassword').focus(), 100);
+    }
   </script>
 </body>
 </html>

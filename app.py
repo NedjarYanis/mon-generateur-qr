@@ -1,6 +1,7 @@
 import os
 import random
 import io
+import hashlib
 from flask import (
     Flask,
     render_template,
@@ -9,7 +10,8 @@ from flask import (
     redirect,
     flash,
     send_file,
-    jsonify
+    jsonify,
+    session
 )
 from database import (
     init_db,
@@ -32,6 +34,38 @@ from automation import execute_week_pass, execute_day_pass
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "basicfit-qr-secret-key-2026")
+
+AUTH_SALT = "bf_vault_sec_"
+# One-way salted SHA-256 hash - password is never stored in plain text anywhere
+EXPECTED_AUTH_HASH = os.environ.get("ACCESS_HASH", "59022fe0ffdb6964e7bae43246697951b9df49e4992fbc05b61c0d60e3f5be88")
+
+@app.before_request
+def check_authentication():
+    # Allow static assets, login route, and health check
+    allowed_prefixes = ['/login', '/static', '/api/health']
+    if any(request.path.startswith(p) for p in allowed_prefixes):
+        return
+    if not session.get('authenticated'):
+        return redirect(url_for('login', next=request.path))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        pw = request.form.get('password', '').strip()
+        h = hashlib.sha256((AUTH_SALT + pw).encode('utf-8')).hexdigest()
+        if h == EXPECTED_AUTH_HASH:
+            session['authenticated'] = True
+            flash("Accès accordé avec succès.", "success")
+            next_url = request.args.get('next') or url_for('home')
+            return redirect(next_url)
+        flash("Clé d'accès incorrecte.", "danger")
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('authenticated', None)
+    flash("Session verrouillée.", "info")
+    return redirect(url_for('login'))
 
 # Initialize SQLite database and run any legacy migrations
 init_db()

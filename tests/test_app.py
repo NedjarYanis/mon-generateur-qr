@@ -27,6 +27,8 @@ def client():
     app.config['TESTING'] = True
     app.config['WTF_CSRF_ENABLED'] = False
     with app.test_client() as client:
+        with client.session_transaction() as sess:
+            sess['authenticated'] = True
         yield client
 
 def test_qr_service():
@@ -221,3 +223,29 @@ def test_404_handler(client):
     res = client.get('/nonexistent-page-test-404')
     assert res.status_code == 404
     assert b"404" in res.data
+
+def test_auth_gate_redirects_unauthenticated():
+    with app.test_client() as anon_client:
+        res = anon_client.get('/')
+        assert res.status_code == 302
+        assert '/login' in res.location
+
+def test_login_flow():
+    with app.test_client() as anon_client:
+        # GET login page
+        res = anon_client.get('/login')
+        assert res.status_code == 200
+        assert b"Acc\xc3\xa8s S\xc3\xa9curis\xc3\xa9" in res.data
+
+        # POST wrong password
+        res_fail = anon_client.post('/login', data={'password': 'wrong_password_123'})
+        assert res_fail.status_code == 200
+        assert b"incorrecte" in res_fail.data
+
+        # Test logout
+        with anon_client.session_transaction() as sess:
+            sess['authenticated'] = True
+        res_logout = anon_client.get('/logout')
+        assert res_logout.status_code == 302
+        assert '/login' in res_logout.location
+
