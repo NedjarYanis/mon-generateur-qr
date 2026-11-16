@@ -18,6 +18,10 @@
   <link rel="apple-touch-icon" sizes="152x152" href="./icons/apple-touch-icon-152x152.png">
   <link rel="apple-touch-icon" sizes="167x167" href="./icons/apple-touch-icon-167x167.png">
 
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
   <!-- Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -970,7 +974,7 @@
       const computed = await computeFullSha256(AUTH_SALT + val);
 
       if (computed === EXPECTED_AUTH_HASH) {
-        localStorage.setItem("site_vault_unlocked", "true");
+        sessionStorage.setItem("site_vault_unlocked", "true");
         document.getElementById('authWall').style.display = 'none';
         errEl.style.display = 'none';
         inputEl.value = '';
@@ -982,22 +986,26 @@
     }
 
     function lockSite() {
+      sessionStorage.removeItem("site_vault_unlocked");
       localStorage.removeItem("site_vault_unlocked");
       stopAutoRefresh();
       document.getElementById('authWall').style.display = 'flex';
       setTimeout(() => document.getElementById('authPassword').focus(), 100);
     }
 
-    // --- SERVICE WORKER ---
+    // --- SERVICE WORKER WITH FORCE UPDATE ---
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW reg error:', err));
+        navigator.serviceWorker.register('./sw.js?v=4').then(reg => {
+          reg.update();
+        }).catch(err => console.log('SW reg error:', err));
       });
     }
 
-    // Init UI & Check Auth
+    // Init UI & Check Auth (Session-based: always locked when opening a new tab/session)
+    localStorage.removeItem("site_vault_unlocked");
     updateHistoryUI();
-    if (localStorage.getItem("site_vault_unlocked") === "true") {
+    if (sessionStorage.getItem("site_vault_unlocked") === "true") {
       document.getElementById('authWall').style.display = 'none';
       startPortiqueGeneration();
     } else {
